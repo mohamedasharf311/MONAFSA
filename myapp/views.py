@@ -8,16 +8,20 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 
 # Create your views here.
+
+# الصفحة الرئيسية (بعد تسجيل الدخول)
 def home(request):
     return render(request, 'home.html')
 
+
+# صفحة تسجيل الدخول
 def auth(request):
     page = 'login'
     if request.method == 'POST':
         username = request.POST.get('username').lower()
         password = request.POST.get('password')
        
-        # ✅ الطريقة الصحيحة: استخدم authenticate فقط
+        # authenticate بتجيب المستخدم وتتأكد من كلمة السر
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -25,14 +29,19 @@ def auth(request):
             return redirect('home')
         else:
             messages.error(request, 'اسم المستخدم أو كلمة المرور غير صحيحة')
+            return render(request, 'auth.html', {'page': page})
 
     context = {'page': page}
     return render(request, 'auth.html', context)
 
+
+# صفحة تسجيل الخروج
 def logoutuser(request):
     logout(request)
     return redirect('home')
 
+
+# صفحة التسجيل (إنشاء حساب جديد)
 def registerUser(request):
     form = UserCreationForm()
 
@@ -45,6 +54,6 @@ def registerUser(request):
             login(request, user)
             return redirect('home')
         else:
-            messages.error(request, 'An error occurred during registration')
+            messages.error(request, 'حدث خطأ أثناء التسجيل')
     
     return render(request, 'reg.html', {'form': form})
