@@ -21,12 +21,17 @@ def auth(request):
         if username:
             username = username.lower()
 
+        # ✅ التحقق من وجود المستخدم بطريقة أحسن
         try:
-            User.objects.get(username=username)
-        except User.DoesNotExist:
-            messages.error(request, 'User does not exist')
-            return redirect('auth')
+            user_exists = User.objects.filter(username=username).exists()
+        except:
+            user_exists = False
 
+        if not user_exists:
+            messages.error(request, 'User does not exist')
+            return render(request, 'auth.html', {'page': page})  # ✅ استخدم render
+
+        # محاولة تسجيل الدخول
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -34,6 +39,7 @@ def auth(request):
             return redirect('home')
         else:
             messages.error(request, 'Username or password is incorrect')
+            return render(request, 'auth.html', {'page': page})  # ✅ استخدم render
 
     context = {'page': page}
     return render(request, 'auth.html', context)
@@ -59,8 +65,8 @@ def registerUser(request):
 
             login(request, user)
             return redirect('home')
-
         else:
             messages.error(request, 'An error occurred during registration')
+            return render(request, 'reg.html', {'form': form})  # ✅ أضف return هنا
 
     return render(request, 'reg.html', {'form': form})
