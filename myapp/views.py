@@ -1,80 +1,53 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render , redirect
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.db.models import Q
+from django.contrib.auth import authenticate , login , logout
+from django.http import HttpResponse
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
-import traceback
-import sys
-
-# الصفحة الرئيسية
+# Create your views here.
 def home(request):
     return render(request, 'home.html')
 
 
-# تسجيل الدخول - نسخة مبسطة جداً
 def auth(request):
-    print("=" * 50, file=sys.stderr)
-    print("AUTH VIEW CALLED", file=sys.stderr)
-    print("Method:", request.method, file=sys.stderr)
-    
+    page = 'login'
     if request.method == 'POST':
+        username = request.POST.get('username').lower()
+        password = request.POST.get('password')
+       
         try:
-            username = request.POST.get('username', '')
-            password = request.POST.get('password', '')
-            
-            print(f"Username: {username}", file=sys.stderr)
-            print(f"Password length: {len(password) if password else 0}", file=sys.stderr)
-            
-            # محاولة تسجيل الدخول مباشرة
-            user = authenticate(request, username=username, password=password)
-            print(f"Authenticate result: {user}", file=sys.stderr)
-            
-            if user is not None:
-                login(request, user)
-                print("Login successful", file=sys.stderr)
-                return redirect('home')
-            else:
-                print("Authentication failed", file=sys.stderr)
-                messages.error(request, 'اسم المستخدم أو كلمة المرور غير صحيحة')
-                return render(request, 'auth.html')
-                
-        except Exception as e:
-            print(f"ERROR: {str(e)}", file=sys.stderr)
-            print(traceback.format_exc(), file=sys.stderr)
-            messages.error(request, f'خطأ: {str(e)}')
-            return render(request, 'auth.html')
-    
-    print("GET request", file=sys.stderr)
-    return render(request, 'auth.html')
+            user = User.objects.get(username=username)
+        except:
+            messages.error(request, 'user dose not exist')  
+         
+        user = authenticate(request, username=username, password=password)
 
+        if user is not None:
+            login(request , user)
+            return redirect('home')
 
-# تسجيل الخروج
+    context = {'page' : page}
+    return render(request, 'auth.html' , context)
+
 def logoutuser(request):
     logout(request)
     return redirect('home')
 
 
-# إنشاء حساب
 def registerUser(request):
+    form = UserCreationForm()
+
     if request.method == 'POST':
-        try:
-            username = request.POST.get('username', '').lower()
-            email = request.POST.get('email', '')
-            password = request.POST.get('password', '')
-            confirm = request.POST.get('confirm_password', '')
-            
-            if password != confirm:
-                messages.error(request, 'كلمة المرور غير متطابقة')
-                return render(request, 'reg.html')
-            
-            user = User.objects.create_user(username=username, email=email, password=password)
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.username = user.username.lower()
             user.save()
             login(request, user)
             return redirect('home')
-            
-        except Exception as e:
-            print(f"Register error: {str(e)}", file=sys.stderr)
-            messages.error(request, f'خطأ في التسجيل: {str(e)}')
-            return render(request, 'reg.html')
-    
-    return render(request, 'reg.html')
+        
+        else:
+            messages.error(request , 'An error occurred during registration')
+    return render(request , 'reg.html', {'form':form})
