@@ -35,6 +35,8 @@ h2{
 label{
     font-size:14px;
     font-weight:bold;
+    display:block;
+    margin-top:10px;
 }
 
 /* inputs */
@@ -43,10 +45,11 @@ input{
     width:100%;
     padding:12px;
     margin-top:8px;
-    margin-bottom:18px;
+    margin-bottom:8px;
     border:1px solid #ddd;
     border-radius:6px;
     font-size:14px;
+    box-sizing:border-box;
 }
 
 /* register button */
@@ -57,6 +60,10 @@ input{
     border:none;
     cursor:pointer;
     font-weight:bold;
+    width:100%;
+    padding:12px;
+    font-size:16px;
+    margin-top:20px;
 }
 
 .register-btn:hover{
@@ -67,7 +74,7 @@ input{
 
 .login-text{
     text-align:center;
-    margin-top:15px;
+    margin-top:20px;
     font-size:14px;
 }
 
@@ -81,6 +88,43 @@ input{
     text-decoration:underline;
 }
 
+/* error messages */
+
+.errorlist{
+    list-style:none;
+    color:#d32f2f;
+    font-size:13px;
+    padding:0;
+    margin:0 0 10px 0;
+    background:#ffebee;
+    padding:8px;
+    border-radius:4px;
+}
+
+.messages{
+    list-style:none;
+    padding:0;
+    margin-bottom:20px;
+}
+
+.messages li{
+    padding:10px;
+    border-radius:4px;
+    margin-bottom:10px;
+}
+
+.messages .error{
+    background:#ffebee;
+    color:#d32f2f;
+    border:1px solid #ffcdd2;
+}
+
+.messages .success{
+    background:#e8f5e8;
+    color:#2e7d32;
+    border:1px solid #a5d6a7;
+}
+
 </style>
 </head>
 
@@ -90,20 +134,57 @@ input{
 
 <h2>Create Account</h2>
 
+<!-- رسائل الخطأ العامة -->
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
 <form method="post">
 {% csrf_token %}
 
 <label>Username</label>
 {{ form.username }}
+{% if form.username.errors %}
+<ul class="errorlist">
+    {% for error in form.username.errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
 
 <label>Email</label>
 {{ form.email }}
+{% if form.email.errors %}
+<ul class="errorlist">
+    {% for error in form.email.errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
 
 <label>Password</label>
 {{ form.password1 }}
+{% if form.password1.errors %}
+<ul class="errorlist">
+    {% for error in form.password1.errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
 
 <label>Confirm Password</label>
 {{ form.password2 }}
+{% if form.password2.errors %}
+<ul class="errorlist">
+    {% for error in form.password2.errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
 
 <input type="submit" value="Register" class="register-btn">
 
