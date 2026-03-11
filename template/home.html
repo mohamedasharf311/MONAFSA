@@ -1,0 +1,94 @@
+{% include 'navbar.html' %}
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+body{
+    margin:0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+    color:white;
+    text-align:center;
+}
+
+/* navbar */
+
+.navbar{
+    padding:20px;
+    font-size:22px;
+    font-weight:bold;
+}
+
+/* main section */
+
+.hero{
+    margin-top:120px;
+}
+
+.hero h1{
+    font-size:50px;
+    margin-bottom:10px;
+}
+
+.hero p{
+    font-size:20px;
+    opacity:0.9;
+}
+
+/* buttons */
+
+.btn{
+    display:inline-block;
+    margin:20px;
+    padding:15px 35px;
+    font-size:18px;
+    border-radius:8px;
+    text-decoration:none;
+    transition:0.3s;
+}
+
+.start{
+    background:#00c853;
+    color:white;
+}
+
+.start:hover{
+    background:#00b248;
+}
+
+.stats{
+    background:white;
+    color:#333;
+}
+
+.stats:hover{
+    background:#eee;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+🏆 منافسة
+</div>
+
+<div class="hero">
+
+<h1>تحدي نفسك كل يوم</h1>
+
+<p>
+ضع هاتفك في جيبك وابدأ التمرين  
+وسيحسب التطبيق العدّات تلقائيًا
+</p>
+
+    <a href="{% url 'auth' %}">Login</a>
+
+
+</div>
+
+</body>
+</html>

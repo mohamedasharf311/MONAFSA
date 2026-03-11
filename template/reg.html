@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    background:#f4f6f9;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+}
+
+/* card */
+
+.form-box{
+    background:white;
+    padding:40px;
+    width:350px;
+    border-radius:10px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.1);
+}
+
+/* title */
+
+h2{
+    text-align:center;
+    margin-bottom:25px;
+}
+
+/* labels */
+
+label{
+    font-size:14px;
+    font-weight:bold;
+}
+
+/* inputs */
+
+input{
+    width:100%;
+    padding:12px;
+    margin-top:8px;
+    margin-bottom:18px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    font-size:14px;
+}
+
+/* register button */
+
+.register-btn{
+    background:#2196f3;
+    color:white;
+    border:none;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.register-btn:hover{
+    background:#1976d2;
+}
+
+/* login link */
+
+.login-text{
+    text-align:center;
+    margin-top:15px;
+    font-size:14px;
+}
+
+.login-text a{
+    color:#2196f3;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+.login-text a:hover{
+    text-decoration:underline;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="form-box">
+
+<h2>Create Account</h2>
+
+<form method="post">
+{% csrf_token %}
+
+<label>Username</label>
+{{ form.username }}
+
+<label>Email</label>
+{{ form.email }}
+
+<label>Password</label>
+{{ form.password1 }}
+
+<label>Confirm Password</label>
+{{ form.password2 }}
+
+<input type="submit" value="Register" class="register-btn">
+
+</form>
+
+<div class="login-text">
+I already have an account  
+<a href="{% url 'auth' %}">Login</a>
+</div>
+
+</div>
+
+</body>
+</html>

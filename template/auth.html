@@ -1,0 +1,156 @@
+{% include 'navbar.html' %}
+
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6f9;
+    margin:0;
+}
+
+/* center container */
+
+.container{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:90vh;
+}
+
+/* box */
+.form-box{
+    background: white;
+    padding: 40px;
+    width: 320px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+/* title */
+h2{
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* inputs */
+.form-box input{
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+/* login button */
+.form-box input[type="submit"]{
+    background: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.form-box input[type="submit"]:hover{
+    background: #43a047;
+}
+
+/* register button */
+
+.register-btn{
+    display:block;
+    text-align:center;
+    padding:12px;
+    background:#2196f3;
+    color:white;
+    text-decoration:none;
+    border-radius:6px;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+.register-btn:hover{
+    background:#1976d2;
+}
+
+/* text */
+
+.register-text{
+    text-align:center;
+    margin-top:10px;
+    font-size:14px;
+}
+
+/* flash message */
+
+.messages{
+    list-style: none;
+    padding: 0;
+    margin-bottom: 15px;
+}
+
+.messages li{
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.messages .error{
+    background: #ffe5e5;
+    color: #d8000c;
+    border: 1px solid #ffbaba;
+}
+
+.messages .success{
+    background: #e7f9ed;
+    color: #2e7d32;
+    border: 1px solid #b7e4c7;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="form-box">
+
+<h2>Login</h2>
+
+{% if messages %}
+<ul class="messages">
+    {% for message in messages %}
+    <li class="{{ message.tags }}">{{ message }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<form method="post">
+{% csrf_token %}
+
+<input type="text" name="username" placeholder="Enter email">
+
+<input type="password" name="password" placeholder="Enter password">
+
+<input type="submit" value="Login">
+
+</form>
+
+<div class="register-text">
+Don't have an account?
+</div>
+
+<a href="{% url 'reg' %}" class="register-btn">Register</a>
+
+</div>
+
+</div>
+
+</body>
+</html>

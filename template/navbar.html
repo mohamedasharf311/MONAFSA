@@ -1,0 +1,36 @@
+<style>
+    /* تنسيقات الشعار */
+    a[href="/"] h1 {
+        color: #a333ff;
+        font-size: 3rem;
+    }
+    
+    /* تنسيقات كلمة Logout */
+    a[href="{% url 'logout' %}"] {
+        color: #DC3545;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    
+    /* تنسيقات كلمة Login فقط */
+    a[href="{% url 'auth' %}"] {
+        color: #28A745; /* لون أخضر مناسب لكلمة login */
+        font-size: 1.5rem; /* نفس حجم كلمة logout */
+        font-weight: bold; /* جعل الخط عريضاً */
+    }
+</style>
+
+<a href="/" >
+    <h1>MONAFSA</h1>
+</a>
+
+<form method="GET" action="{% url 'home' %}">
+</form>
+
+{% if request.user.is_authenticated %}
+    <a href="{% url 'logout' %}">Logout</a>
+{% else %}
+    <a href="{% url 'auth' %}">Login</a>
+{% endif %}
+
+<hr>
