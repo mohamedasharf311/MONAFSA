@@ -278,7 +278,6 @@ def api_update_customer_status(request):
         
         storage = load_local_storage()
         customers = storage.get('barber_customers_final', [])
-        workers = storage.get('barber_workers_final', {})
         
         for customer in customers:
             if customer.get('id') == customer_id:
@@ -307,8 +306,6 @@ def api_send_notification(request):
         
         # تسجيل للإشعار
         print(f"📱 إرسال واتساب إلى {phone}: {message}")
-        
-        # TODO: أضف كود إرسال واتساب الحقيقي هنا
         
         return JsonResponse({
             'success': True,
@@ -514,6 +511,12 @@ def api_fix_missing_customers(request):
     except Exception as e:
         print(f"❌ خطأ في إصلاح البيانات: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@require_http_methods(["GET"])
+def api_fix_data(request):
+    """إصلاح البيانات - إضافة العملاء المفقودين (مرجع لـ fix_missing_customers)"""
+    return api_fix_missing_customers(request)
 
 
 @require_http_methods(["POST"])
