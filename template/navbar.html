@@ -1,36 +1,227 @@
 <style>
-    /* تنسيقات الشعار */
+    /* تنسيقات الشعار - باربر شوب style */
     a[href="/"] h1 {
-        color: #a333ff;
-        font-size: 3rem;
+        background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0;
+        letter-spacing: 2px;
+        position: relative;
+        display: inline-block;
+        transition: transform 0.3s ease;
     }
     
-    /* تنسيقات كلمة Logout */
+    a[href="/"] h1::before {
+        content: '✂️';
+        font-size: 2rem;
+        margin-right: 10px;
+        background: none;
+        -webkit-background-clip: unset;
+        background-clip: unset;
+        color: #ff6b6b;
+        display: inline-block;
+    }
+    
+    a[href="/"] h1::after {
+        content: '💈';
+        font-size: 2rem;
+        margin-left: 10px;
+        background: none;
+        -webkit-background-clip: unset;
+        background-clip: unset;
+        color: #ff8e53;
+        display: inline-block;
+    }
+    
+    a[href="/"]:hover h1 {
+        transform: scale(1.05);
+    }
+    
+    /* تنسيقات كلمة Logout - باربر شوب style */
     a[href="{% url 'logout' %}"] {
-        color: #DC3545;
-        font-size: 1.5rem;
-        font-weight: bold;
+        background: linear-gradient(135deg, #DC3545 0%, #c82333 100%);
+        color: white;
+        padding: 10px 25px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-size: 1rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-block;
+        box-shadow: 0 2px 5px rgba(220, 53, 69, 0.3);
+        letter-spacing: 0.5px;
     }
     
-    /* تنسيقات كلمة Login فقط */
+    a[href="{% url 'logout' %}"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        background: linear-gradient(135deg, #c82333 0%, #DC3545 100%);
+    }
+    
+    a[href="{% url 'logout' %}"]::before {
+        content: '✂️ ';
+        font-size: 1.1rem;
+    }
+    
+    /* تنسيقات كلمة Login فقط - باربر شوب style */
     a[href="{% url 'auth' %}"] {
-        color: #28A745; /* لون أخضر مناسب لكلمة login */
-        font-size: 1.5rem; /* نفس حجم كلمة logout */
-        font-weight: bold; /* جعل الخط عريضاً */
+        background: linear-gradient(135deg, #4ecdc4 0%, #45b7d1 100%);
+        color: white;
+        padding: 10px 25px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-size: 1rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: inline-block;
+        box-shadow: 0 2px 5px rgba(78, 205, 196, 0.3);
+        letter-spacing: 0.5px;
+    }
+    
+    a[href="{% url 'auth' %}"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        background: linear-gradient(135deg, #45b7d1 0%, #4ecdc4 100%);
+    }
+    
+    a[href="{% url 'auth' %}"]::before {
+        content: '💈 ';
+        font-size: 1.1rem;
+    }
+    
+    /* تنسيق الناف بار بشكل عام */
+    .barber-navbar {
+        background: white;
+        padding: 15px 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .logo-section {
+        flex-shrink: 0;
+    }
+    
+    .nav-links {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    /* تنسيق روابط إضافية للباربر شوب */
+    .nav-links a:not([href="{% url 'logout' %}"]):not([href="{% url 'auth' %}"]):not(.logo-section a) {
+        color: #555;
+        text-decoration: none;
+        font-weight: 500;
+        padding: 8px 15px;
+        border-radius: 20px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+    }
+    
+    .nav-links a:not([href="{% url 'logout' %}"]):not([href="{% url 'auth' %}"]):not(.logo-section a):hover {
+        color: #ff6b6b;
+        background: rgba(255, 107, 107, 0.1);
+    }
+    
+    /* تنسيق اسم المستخدم إذا كان مسجل دخول */
+    .user-welcome {
+        color: #ff6b6b;
+        font-weight: 600;
+        margin-right: 15px;
+        padding: 8px 15px;
+        background: linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(255, 142, 83, 0.1) 100%);
+        border-radius: 25px;
+        font-size: 0.95rem;
+    }
+    
+    .user-welcome::before {
+        content: '✂️ ';
+        font-size: 1rem;
+    }
+    
+    /* تصميم متجاوب للشاشات الصغيرة */
+    @media (max-width: 768px) {
+        .barber-navbar {
+            padding: 15px 20px;
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .nav-links {
+            justify-content: center;
+            width: 100%;
+        }
+        
+        a[href="/"] h1 {
+            font-size: 2rem;
+        }
+        
+        a[href="/"] h1::before,
+        a[href="/"] h1::after {
+            font-size: 1.5rem;
+        }
+        
+        a[href="{% url 'logout' %}"],
+        a[href="{% url 'auth' %}"] {
+            padding: 8px 20px;
+            font-size: 0.9rem;
+        }
+    }
+    
+    /* تأثيرات إضافية */
+    @keyframes shine {
+        0% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+    
+    a[href="{% url 'logout' %}"]:active,
+    a[href="{% url 'auth' %}"]:active {
+        transform: translateY(0);
+    }
+    
+    /* تنسيق شريط فاصل باربر شوب */
+    .barber-divider {
+        height: 3px;
+        background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #ff6b6b);
+        margin: 0;
+        border: none;
     }
 </style>
 
-<a href="/" >
-    <h1>MONAFSA</h1>
-</a>
+<nav class="barber-navbar">
+    <div class="logo-section">
+        <a href="/">
+            <h1>BARBER SHOP</h1>
+        </a>
+    </div>
+    
+    <div class="nav-links">
+        {% if request.user.is_authenticated %}
+            <span class="user-welcome">Welcome, {{ request.user.username }}!</span>
+            <a href="{% url 'logout' %}">Logout</a>
+        {% else %}
+            <a href="{% url 'auth' %}">Login / Register</a>
+        {% endif %}
+    </div>
+</nav>
 
-<form method="GET" action="{% url 'home' %}">
+<hr class="barber-divider">
+
+<form method="GET" action="{% url 'home' %}" style="display: none;">
+    <!-- Hidden form - kept for compatibility -->
 </form>
-
-{% if request.user.is_authenticated %}
-    <a href="{% url 'logout' %}">Logout</a>
-{% else %}
-    <a href="{% url 'auth' %}">Login</a>
-{% endif %}
-
-<hr>
