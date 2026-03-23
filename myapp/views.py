@@ -217,17 +217,20 @@ def api_add_customer(request):
                     assigned_worker = worker_name
                     break
         
+        # إنشاء معرف فريد
+        customer_id = int(datetime.now().timestamp() * 1000)
+        
         # إنشاء عميل جديد
         new_customer = {
-            'id': int(datetime.now().timestamp() * 1000),
+            'id': customer_id,
             'name': name,
-            'phone': phone,
+            'phone': phone or '',
             'service': service,
             'worker': assigned_worker,
             'queueNumber': queue_number,
             'status': 'waiting',
             'bookingTime': datetime.now().isoformat(),
-            'originalOrder': int(datetime.now().timestamp() * 1000)
+            'originalOrder': customer_id
         }
         
         customers.append(new_customer)
@@ -236,14 +239,20 @@ def api_add_customer(request):
         if assigned_worker in workers:
             if 'queue' not in workers[assigned_worker]:
                 workers[assigned_worker]['queue'] = []
-            workers[assigned_worker]['queue'].append(new_customer['id'])
+            workers[assigned_worker]['queue'].append(customer_id)
+        
+        # تحديث أرقام الأدوار لجميع العملاء المنتظرين
+        waiting_customers = [c for c in customers if c.get('status') == 'waiting']
+        for idx, customer in enumerate(waiting_customers, 1):
+            customer['queueNumber'] = idx
         
         # حفظ البيانات
         storage['barber_workers_final'] = workers
         storage['barber_customers_final'] = customers
         save_local_storage(storage)
         
-        print(f"✅ تم إضافة عميل جديد: {name} - الدور {queue_number} عند {assigned_worker}")
+        print(f"✅ تم إضافة عميل: {name} - الدور {queue_number} عند {assigned_worker}")
+        print(f"📊 إجمالي العملاء الآن: {len(customers)}")
         
         return JsonResponse({
             'success': True,
@@ -269,6 +278,7 @@ def api_update_customer_status(request):
         
         storage = load_local_storage()
         customers = storage.get('barber_customers_final', [])
+        workers = storage.get('barber_workers_final', {})
         
         for customer in customers:
             if customer.get('id') == customer_id:
@@ -299,10 +309,6 @@ def api_send_notification(request):
         print(f"📱 إرسال واتساب إلى {phone}: {message}")
         
         # TODO: أضف كود إرسال واتساب الحقيقي هنا
-        # يمكنك استخدام:
-        # - Twilio API
-        # - WhatsApp Business API
-        # - أو أي خدمة أخرى
         
         return JsonResponse({
             'success': True,
@@ -445,6 +451,72 @@ def api_debug(request):
     except Exception as e:
         print(f"❌ خطأ في api_debug: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
+def api_fix_data(request):
+    """إصلاح البيانات - إضافة العملاء المفقودين من قوائم الانتظار"""
+    try:
+        storage = load_local_storage()
+        workers = storage.get('barber_workers_final', {})
+        customers = storage.get('barber_customers_final', [])
+        
+        # جمع كل IDs العملاء من قوائم انتظار الصنايعية
+        all_queue_ids = []
+        for worker_name, worker_data in workers.items():
+            queue_ids = worker_data.get('queue', [])
+            all_queue_ids.extend(queue_ids)
+        
+        # جمع IDs العملاء الموجودة حالياً
+        existing_ids = [c.get('id') for c in customers]
+        
+        # إضافة العملاء المفقودين
+        added_count = 0
+        for queue_id in all_queue_ids:
+            if queue_id not in existing_ids:
+                # البحث عن الصنايعي الذي يحتوي هذا الـ ID
+                assigned_worker = 'محمد'
+                for worker_name, worker_data in workers.items():
+                    if queue_id in worker_data.get('queue', []):
+                        assigned_worker = worker_name
+                        break
+                
+                # إنشاء عميل افتراضي
+                new_customer = {
+                    'id': queue_id,
+                    'name': 'عميل جديد',
+                    'phone': '',
+                    'service': 'حلاقة',
+                    'worker': assigned_worker,
+                    'queueNumber': len(customers) + added_count + 1,
+                    'status': 'waiting',
+                    'bookingTime': datetime.now().isoformat(),
+                    'originalOrder': queue_id
+                }
+                customers.append(new_customer)
+                added_count += 1
+                print(f"✅ تم إضافة عميل مفقود: ID {queue_id} عند {assigned_worker}")
+        
+        # تحديث أرقام الأدوار
+        waiting_customers = [c for c in customers if c.get('status') == 'waiting']
+        for idx, customer in enumerate(waiting_customers, 1):
+            customer['queueNumber'] = idx
+        
+        # حفظ البيانات
+        storage['barber_customers_final'] = customers
+        save_local_storage(storage)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'تم إضافة {added_count} عميل مفقود',
+            'added_count': added_count,
+            'total_customers': len(customers),
+            'waiting_count': len(waiting_customers)
+        })
+        
+    except Exception as e:
+        print(f"❌ خطأ في إصلاح البيانات: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @require_http_methods(["POST"])
