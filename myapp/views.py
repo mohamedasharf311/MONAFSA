@@ -392,3 +392,35 @@ def api_debug(request):
         'customers_count': len(storage.get('barber_customers_final', [])),
         'storage_data': storage
     })
+    @require_http_methods(["POST"])
+def api_clear_session(request):
+    """مسح جميع البيانات (للاختبار)"""
+    try:
+        storage = {
+            'barber_workers_final': {
+                'محمد': {
+                    'status': 'available',
+                    'currentCustomer': None,
+                    'queue': [],
+                    'skills': ['حلاقة', 'لحية', 'حلاقة ولحية']
+                },
+                'أحمد': {
+                    'status': 'available',
+                    'currentCustomer': None,
+                    'queue': [],
+                    'skills': ['حلاقة', 'حلاقة وتصفيف', 'حلاقة كاملة']
+                },
+                'خالد': {
+                    'status': 'available',
+                    'currentCustomer': None,
+                    'queue': [],
+                    'skills': ['لحية', 'حلاقة ولحية', 'حلاقة كاملة']
+                }
+            },
+            'barber_customers_final': []
+        }
+        save_local_storage(storage)
+        return JsonResponse({'success': True, 'message': 'تم مسح جميع البيانات'})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
