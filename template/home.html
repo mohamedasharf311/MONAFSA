@@ -122,7 +122,7 @@
 
         .workers-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
             gap: 20px;
             max-height: 600px;
             overflow-y: auto;
@@ -173,7 +173,7 @@
 
         .queue-list {
             padding: 15px;
-            max-height: 300px;
+            max-height: 350px;
             overflow-y: auto;
             min-height: 150px;
         }
@@ -187,6 +187,12 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        .queue-item:first-child {
+            background: #fff3e0;
+            border-right: 3px solid #ff9800;
         }
 
         .queue-number {
@@ -197,6 +203,18 @@
             border-radius: 12px;
             margin-left: 10px;
             font-size: 12px;
+            display: inline-block;
+        }
+
+        .customer-name {
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .customer-service {
+            font-size: 11px;
+            color: #666;
+            display: block;
         }
 
         .queue-actions button {
@@ -369,6 +387,15 @@
 
         .status-offline {
             background-color: #f44336;
+        }
+
+        .waiting-badge {
+            background: #ff9800;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -545,9 +572,121 @@
         let customers = [];
         let transferCustomerId = null;
 
+        // ==================== دوال إشعارات واتساب ====================
+        
+        // إرسال إشعار لعميل عن عدد المنتظرين قبله
+        async function sendQueueNotification(customer) {
+            if (!customer.phone) return;
+            
+            const worker = workers[customer.worker];
+            const queue = worker?.queue || [];
+            const position = queue.findIndex(id => id === customer.id) + 1;
+            const waitingBefore = position - 1;
+            
+            let message = "";
+            if (waitingBefore === 0) {
+                message = `🔔 مرحباً ${customer.name}، دورك الآن! يمكنك التوجه إلى ${customer.worker}`;
+            } else if (waitingBefore === 1) {
+                message = `⏳ مرحباً ${customer.name}، بقي شخص واحد قبلك عند ${customer.worker}`;
+            } else {
+                message = `⏳ مرحباً ${customer.name}، بقي ${waitingBefore} أشخاص قبلك عند ${customer.worker}`;
+            }
+            
+            await sendWhatsAppNotification(customer.phone, message, customer.name);
+        }
+
+        // إرسال إشعارات لجميع العملاء في قائمة الانتظار
+        async function notifyAllWaitingCustomers(workerName) {
+            const worker = workers[workerName];
+            if (!worker || !worker.queue) return;
+            
+            for (const customerId of worker.queue) {
+                const customer = customers.find(c => c.id === customerId);
+                if (customer && customer.phone) {
+                    await sendQueueNotification(customer);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        }
+
+        // استدعاء عميل مع إشعار
+        async function callCustomerWithNotification(customerId, workerName) {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return false;
+            
+            if (workers[workerName].currentCustomer) {
+                showToast(`⚠️ ${workerName} مشغول حالياً`);
+                return false;
+            }
+            
+            const queueIdx = workers[workerName].queue.findIndex(id => id === customerId);
+            if (queueIdx !== -1) workers[workerName].queue.splice(queueIdx, 1);
+            
+            workers[workerName].currentCustomer = customer.id;
+            workers[workerName].status = 'busy';
+            customer.status = 'in_service';
+            
+            saveData();
+            updateDashboard();
+            showToast(`📢 تم استدعاء ${customer.name} إلى ${workerName}`);
+            
+            if (customer.phone) {
+                await sendWhatsAppNotification(
+                    customer.phone,
+                    `🔔 مرحباً ${customer.name}، دورك الآن مع ${workerName}`,
+                    customer.name
+                );
+            }
+            
+            setTimeout(() => {
+                notifyAllWaitingCustomers(workerName);
+            }, 1000);
+            
+            return true;
+        }
+
+        // إنهاء خدمة عميل مع إشعارات
+        async function completeCustomerWithNotification(workerName) {
+            if (!workers[workerName].currentCustomer) return;
+            
+            const currentCustomer = customers.find(c => c.id === workers[workerName].currentCustomer);
+            
+            if (currentCustomer) {
+                currentCustomer.status = 'completed';
+                workers[workerName].currentCustomer = null;
+                workers[workerName].status = 'available';
+                
+                showToast(`✅ تم إنهاء خدمة ${currentCustomer.name}`);
+                
+                if (currentCustomer.phone) {
+                    await sendWhatsAppNotification(
+                        currentCustomer.phone,
+                        `✅ شكراً ${currentCustomer.name} على زيارتك، نتمنى رضاك عن الخدمة`,
+                        currentCustomer.name
+                    );
+                }
+                
+                saveData();
+                updateDashboard();
+                
+                if (workers[workerName].queue && workers[workerName].queue.length > 0) {
+                    const nextId = workers[workerName].queue[0];
+                    const nextCustomer = customers.find(c => c.id === nextId);
+                    
+                    if (nextCustomer) {
+                        showToast(`📢 جاري استدعاء العميل التالي: ${nextCustomer.name}`);
+                        setTimeout(async () => {
+                            await callCustomerWithNotification(nextId, workerName);
+                        }, 1500);
+                    }
+                } else {
+                    await notifyAllWaitingCustomers(workerName);
+                }
+            }
+        }
+
         // ==================== دوال API للواتساب ====================
         
-        // جلب بيانات الصنايعية عبر API
         async function getWorkersAPI() {
             try {
                 const response = await fetch('/api/workers');
@@ -564,7 +703,6 @@
             return null;
         }
 
-        // جلب قائمة الانتظار عبر API
         async function getQueueAPI() {
             try {
                 const response = await fetch('/api/queue');
@@ -578,7 +716,6 @@
             return null;
         }
 
-        // جلب قائمة انتظار صنايعي محدد
         async function getWorkerQueueAPI(workerName) {
             try {
                 const response = await fetch(`/api/worker_queue?name=${workerName}`);
@@ -591,20 +728,12 @@
             return [];
         }
 
-        // إضافة عميل عبر API
         async function addCustomerAPI(name, service, phone, preferredWorker) {
             try {
                 const response = await fetch('/api/add_customer', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: name,
-                        service: service,
-                        phone: phone,
-                        preferred_worker: preferredWorker
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, service, phone, preferred_worker: preferredWorker })
                 });
                 
                 if (response.ok) {
@@ -620,18 +749,12 @@
             return null;
         }
 
-        // تحديث حالة عميل عبر API
         async function updateCustomerStatusAPI(customerId, status) {
             try {
                 const response = await fetch('/api/update_customer_status', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        customerId: customerId,
-                        status: status
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customerId, status })
                 });
                 return response.ok;
             } catch (error) {
@@ -640,27 +763,17 @@
             }
         }
 
-        // إرسال إشعار واتساب
         async function sendWhatsAppNotification(phone, message, customerName) {
+            if (!phone) return false;
             try {
                 const response = await fetch('/api/send_notification', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        phone: phone,
-                        message: message,
-                        customerName: customerName
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, message, customerName })
                 });
-                
                 if (response.ok) {
-                    const result = await response.json();
-                    if (result.success) {
-                        console.log('WhatsApp notification sent');
-                        return true;
-                    }
+                    console.log('WhatsApp notification sent');
+                    return true;
                 }
             } catch (error) {
                 console.log('WhatsApp notification failed');
@@ -668,7 +781,6 @@
             return false;
         }
 
-        // اختبار اتصال API
         async function testApiConnection() {
             try {
                 const response = await fetch('/api/workers');
@@ -688,7 +800,6 @@
             }
         }
 
-        // عرض معلومات API
         function showApiInfo() {
             document.getElementById('apiModal').style.display = 'flex';
         }
@@ -716,22 +827,18 @@
             else customers = [];
             
             updateDashboard();
-            
-            // محاولة جلب البيانات من API
             getWorkersAPI();
         }
 
         function saveData() {
             localStorage.setItem('barber_workers_final', JSON.stringify(workers));
             localStorage.setItem('barber_customers_final', JSON.stringify(customers));
-            
-            // محاولة حفظ البيانات عبر API أيضاً
             saveToAPI();
         }
 
         async function saveToAPI() {
             try {
-                await fetch('/api/sync_data', {
+                await fetch('/api/sync_save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ workers, customers })
@@ -789,18 +896,11 @@
             updateDashboard();
             showToast(`✅ تم إضافة ${name} - الدور رقم ${newCustomer.queueNumber}`);
             
-            // إرسال إشعار واتساب إذا كان هناك رقم
             if (phone) {
-                sendWhatsAppNotification(
-                    phone,
-                    `مرحباً ${name}، تم حجز دورك رقم ${newCustomer.queueNumber} عند ${assignedWorker}`,
-                    name
-                );
+                sendWhatsAppNotification(phone, `مرحباً ${name}، تم حجز دورك رقم ${newCustomer.queueNumber} عند ${assignedWorker}`, name);
             }
             
-            // محاولة الإضافة عبر API
             addCustomerAPI(name, service, phone, assignedWorker);
-            
             return newCustomer;
         }
 
@@ -813,10 +913,7 @@
             waitingCustomers.splice(index, 1);
             waitingCustomers.splice(newPosition - 1, 0, customer);
             
-            waitingCustomers.forEach((c, i) => {
-                c.originalOrder = i;
-            });
-            
+            waitingCustomers.forEach((c, i) => c.originalOrder = i);
             renumberQueue();
             saveData();
             updateDashboard();
@@ -848,60 +945,11 @@
         }
 
         function callCustomer(customerId, workerName) {
-            const customer = customers.find(c => c.id === customerId);
-            if (!customer) return;
-            
-            if (workers[workerName].currentCustomer) {
-                showToast(`⚠️ ${workerName} مشغول حالياً`);
-                return;
-            }
-            
-            const queueIdx = workers[workerName].queue.findIndex(id => id === customerId);
-            if (queueIdx !== -1) workers[workerName].queue.splice(queueIdx, 1);
-            
-            workers[workerName].currentCustomer = customer.id;
-            workers[workerName].status = 'busy';
-            customer.status = 'in_service';
-            
-            saveData();
-            updateDashboard();
-            showToast(`📢 تم استدعاء ${customer.name} إلى ${workerName}`);
-            
-            if (customer.phone) {
-                sendWhatsAppNotification(
-                    customer.phone,
-                    `🔔 مرحباً ${customer.name}، دورك الآن مع ${workerName}`,
-                    customer.name
-                );
-            }
+            callCustomerWithNotification(customerId, workerName);
         }
 
         function completeCustomer(workerName) {
-            if (!workers[workerName].currentCustomer) return;
-            
-            const customer = customers.find(c => c.id === workers[workerName].currentCustomer);
-            if (customer) {
-                customer.status = 'completed';
-                workers[workerName].currentCustomer = null;
-                workers[workerName].status = 'available';
-                
-                saveData();
-                updateDashboard();
-                showToast(`✅ تم إنهاء خدمة ${customer.name}`);
-                
-                if (customer.phone) {
-                    sendWhatsAppNotification(
-                        customer.phone,
-                        `✅ شكراً ${customer.name} على زيارتك، نتمنى رضاك عن الخدمة`,
-                        customer.name
-                    );
-                }
-                
-                if (workers[workerName].queue.length > 0) {
-                    const nextId = workers[workerName].queue[0];
-                    setTimeout(() => callCustomer(nextId, workerName), 500);
-                }
-            }
+            completeCustomerWithNotification(workerName);
         }
 
         function updateDashboard() {
@@ -936,16 +984,20 @@
                         </div>
                         <div class="current-customer">
                             <strong>👤 العميل الحالي:</strong><br>
-                            ${current ? `${current.name} - ${current.service} 🎫 #${current.queueNumber}` : '🚫 لا يوجد عميل'}
+                            ${current ? `<strong>${current.name}</strong> - ${current.service} 🎫 #${current.queueNumber}` : '🚫 لا يوجد عميل'}
                         </div>
                         <div class="queue-list">
                             <strong>⏳ قائمة الانتظار (${data.queue?.length || 0})</strong><br><br>
-                            ${queueCustomers.map(c => `
-                                <div class="queue-item">
-                                    <div><span class="queue-number">#${c.queueNumber}</span> ${c.name} - ${c.service}</div>
+                            ${queueCustomers.map((c, index) => `
+                                <div class="queue-item" style="${index === 0 ? 'background:#fff3e0; border-right:3px solid #ff9800;' : ''}">
+                                    <div>
+                                        <span class="queue-number">#${c.queueNumber}</span>
+                                        <span class="customer-name">${c.name}</span>
+                                        <span class="customer-service">${c.service}</span>
+                                    </div>
                                     <div class="queue-actions">
-                                        <button class="btn-call" onclick="callCustomer(${c.id}, '${name}')">📢</button>
-                                        <button class="btn-transfer" onclick="openTransferModal(${c.id})">🔄</button>
+                                        <button class="btn-call" onclick="callCustomer(${c.id}, '${name}')" title="استدعاء">📢</button>
+                                        <button class="btn-transfer" onclick="openTransferModal(${c.id})" title="نقل">🔄</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -976,7 +1028,7 @@
             tbody.innerHTML = waiting.map(c => `
                 <tr>
                     <td>🎫 ${c.queueNumber}</td>
-                    <td>${c.name}</td>
+                    <td><strong>${c.name}</strong></td>
                     <td>${c.service}</td>
                     <td>${c.worker}</td>
                     <td>${new Date(c.bookingTime).toLocaleTimeString('ar-EG')}</td>
@@ -1122,7 +1174,7 @@
         // بدء التشغيل
         loadData();
         setInterval(() => loadData(), 5000);
-        setInterval(() => testApiConnection(), 30000); // اختبار الاتصال كل 30 ثانية
+        setInterval(() => testApiConnection(), 30000);
     </script>
 </body>
 </html>
