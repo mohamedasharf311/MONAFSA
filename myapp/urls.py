@@ -13,7 +13,6 @@ urlpatterns = [
     path('api/update_customer_status', views.api_update_customer_status, name='api_update_customer_status'),
     path('api/send_notification', views.api_send_notification, name='api_send_notification'),
     path('api/sync_data', views.api_sync_data, name='api_sync_data'),
-    path('api/clear_session', views.api_clear_session, name='api_clear_session'),
     path('api/stats', views.api_stats, name='api_stats'),
     path('api/sync_save', views.api_sync_save, name='api_sync_save'),
     path('api/clear_data', views.api_clear_data, name='api_clear_data'),
