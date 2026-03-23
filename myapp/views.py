@@ -404,3 +404,23 @@ def api_debug(request):
 def api_clear_session(request):
     """مسح جميع البيانات (للاختبار) - اسم بديل لـ api_clear_data"""
     return api_clear_data(request)
+@require_http_methods(["GET"])
+def api_error_test(request):
+    """اختبار بسيط لاكتشاف الأخطاء"""
+    try:
+        # اختبار جلب الصنايعية
+        workers = BarberWorker.objects.all()
+        workers_data = {w.name: {'status': w.status, 'skills': w.skills} for w in workers}
+        
+        return JsonResponse({
+            'status': 'ok',
+            'workers': workers_data,
+            'workers_count': workers.count()
+        })
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'status': 'error',
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
