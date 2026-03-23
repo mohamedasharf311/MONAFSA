@@ -8,68 +8,52 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
+from django.db import transaction
 import json
 import os
 from datetime import datetime
 
+# استيراد الموديلات
+from .models import BarberWorker, BarberCustomer, BarberSettings
+
 # Create your views here.
 
-# ==================== دوال مساعدة للتخزين ====================
+# ==================== دوال مساعدة ====================
 
-def get_storage_path():
-    """الحصول على مسار ملف التخزين المؤقت"""
-    # على Vercel، استخدم /tmp للتخزين المؤقت
-    # محلياً، استخدم المجلد الحالي
-    if os.path.exists('/tmp'):
-        return '/tmp/barber_data.json'
-    else:
-        return 'barber_data.json'
-
-def load_local_storage():
-    """تحميل البيانات من ملف JSON"""
-    storage_path = get_storage_path()
-    try:
-        if os.path.exists(storage_path):
-            with open(storage_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"Error loading storage: {e}")
+def init_default_workers():
+    """تهيئة الصنايعية الافتراضيين إذا لم يكونوا موجودين"""
+    default_workers = [
+        {'name': 'محمد', 'skills': ['حلاقة', 'لحية', 'حلاقة ولحية']},
+        {'name': 'أحمد', 'skills': ['حلاقة', 'حلاقة وتصفيف', 'حلاقة كاملة']},
+        {'name': 'خالد', 'skills': ['لحية', 'حلاقة ولحية', 'حلاقة كاملة']}
+    ]
     
-    # البيانات الافتراضية
-    return {
-        'barber_workers_final': {
-            'محمد': {
+    for worker_data in default_workers:
+        BarberWorker.objects.get_or_create(
+            name=worker_data['name'],
+            defaults={
+                'skills': worker_data['skills'],
                 'status': 'available',
-                'currentCustomer': None,
-                'queue': [],
-                'skills': ['حلاقة', 'لحية', 'حلاقة ولحية']
-            },
-            'أحمد': {
-                'status': 'available',
-                'currentCustomer': None,
-                'queue': [],
-                'skills': ['حلاقة', 'حلاقة وتصفيف', 'حلاقة كاملة']
-            },
-            'خالد': {
-                'status': 'available',
-                'currentCustomer': None,
-                'queue': [],
-                'skills': ['لحية', 'حلاقة ولحية', 'حلاقة كاملة']
+                'queue': []
             }
-        },
-        'barber_customers_final': []
-    }
+        )
 
-def save_local_storage(data):
-    """حفظ البيانات في ملف JSON"""
-    storage_path = get_storage_path()
-    try:
-        with open(storage_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return True
-    except Exception as e:
-        print(f"Error saving storage: {e}")
-        return False
+def get_workers_dict():
+    """جلب بيانات الصنايعية كـ dict (للتوافق مع الكود الحالي)"""
+    workers = {}
+    for w in BarberWorker.objects.all():
+        workers[w.name] = {
+            'status': w.status,
+            'currentCustomer': w.current_customer_id,
+            'queue': w.queue or [],
+            'skills': w.skills
+        }
+    return workers
+
+def get_customers_list():
+    """جلب بيانات العملاء كـ list"""
+    return list(BarberCustomer.objects.values())
 
 # ==================== دوال الصفحات الرئيسية ====================
 
@@ -120,45 +104,40 @@ def registerUser(request):
     return render(request , 'reg.html', {'form':form})
 
 
-# ==================== دوال API للواتساب ====================
+# ==================== دوال API للواتساب (باستخدام قاعدة البيانات) ====================
 
 @require_http_methods(["GET"])
 def api_workers(request):
-    """جلب بيانات الصنايعية من localStorage"""
-    data = load_local_storage()
-    workers = data.get('barber_workers_final', {})
+    """جلب بيانات الصنايعية من قاعدة البيانات"""
+    init_default_workers()
+    workers = get_workers_dict()
     return JsonResponse(workers, safe=False)
 
 
 @require_http_methods(["GET"])
 def api_queue(request):
-    """جلب قائمة الانتظار من localStorage"""
-    data = load_local_storage()
-    customers = data.get('barber_customers_final', [])
-    waiting = [c for c in customers if c.get('status') == 'waiting']
-    return JsonResponse(waiting, safe=False)
+    """جلب قائمة الانتظار من قاعدة البيانات"""
+    waiting = BarberCustomer.objects.filter(status='waiting').order_by('queue_number')
+    return JsonResponse(list(waiting.values()), safe=False)
 
 
 @require_http_methods(["GET"])
 def api_worker_queue(request):
     """جلب قائمة انتظار صنايعي محدد"""
     worker_name = request.GET.get('name')
-    data = load_local_storage()
-    workers = data.get('barber_workers_final', {})
-    customers = data.get('barber_customers_final', [])
-    
-    if worker_name and worker_name in workers:
-        queue_ids = workers[worker_name].get('queue', [])
-        queue_customers = [c for c in customers if c.get('id') in queue_ids]
-        return JsonResponse(queue_customers, safe=False)
-    
-    return JsonResponse([], safe=False)
+    try:
+        worker = BarberWorker.objects.get(name=worker_name)
+        queue_ids = worker.queue or []
+        customers = BarberCustomer.objects.filter(customer_id__in=queue_ids, status='waiting').order_by('queue_number')
+        return JsonResponse(list(customers.values()), safe=False)
+    except BarberWorker.DoesNotExist:
+        return JsonResponse([], safe=False)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_add_customer(request):
-    """إضافة عميل جديد - يحفظ في localStorage"""
+    """إضافة عميل جديد - يحفظ في قاعدة البيانات"""
     try:
         data = json.loads(request.body)
         name = data.get('name')
@@ -166,54 +145,60 @@ def api_add_customer(request):
         phone = data.get('phone')
         preferred_worker = data.get('preferred_worker')
         
-        # تحميل البيانات الحالية
-        storage = load_local_storage()
-        workers = storage.get('barber_workers_final', {})
-        customers = storage.get('barber_customers_final', [])
+        with transaction.atomic():
+            # جلب الصنايعية
+            workers = {w.name: w for w in BarberWorker.objects.all()}
+            
+            # حساب رقم الدور
+            waiting_count = BarberCustomer.objects.filter(status='waiting').count()
+            queue_number = waiting_count + 1
+            
+            # تعيين صنايعي
+            assigned_worker = preferred_worker
+            if assigned_worker == 'أول متاح':
+                for name, worker in workers.items():
+                    if worker.status == 'available' and service in worker.skills:
+                        assigned_worker = name
+                        break
+            
+            # إنشاء معرف فريد
+            customer_id = int(datetime.now().timestamp() * 1000)
+            
+            # إنشاء عميل جديد
+            new_customer = BarberCustomer.objects.create(
+                customer_id=customer_id,
+                name=name,
+                phone=phone,
+                service=service,
+                worker=assigned_worker,
+                queue_number=queue_number,
+                status='waiting',
+                original_order=customer_id
+            )
+            
+            # تحديث قائمة انتظار الصنايعي
+            if assigned_worker in workers:
+                worker = workers[assigned_worker]
+                queue = worker.queue or []
+                queue.append(customer_id)
+                worker.queue = queue
+                worker.save()
+            
+            # تحديث أرقام الأدوار لجميع العملاء
+            all_waiting = BarberCustomer.objects.filter(status='waiting').order_by('queue_number')
+            for idx, customer in enumerate(all_waiting, 1):
+                customer.queue_number = idx
+                customer.save()
         
-        # حساب رقم الدور
-        waiting_count = len([c for c in customers if c.get('status') == 'waiting'])
-        queue_number = waiting_count + 1
-        
-        # تعيين صنايعي
-        assigned_worker = preferred_worker
-        if assigned_worker == 'أول متاح':
-            for worker_name, worker_data in workers.items():
-                if worker_data.get('status') == 'available' and service in worker_data.get('skills', []):
-                    assigned_worker = worker_name
-                    break
-        
-        # إنشاء عميل جديد
-        new_customer = {
-            'id': int(datetime.now().timestamp() * 1000),
-            'name': name,
-            'phone': phone,
-            'service': service,
-            'worker': assigned_worker,
-            'queueNumber': queue_number,
-            'status': 'waiting',
-            'bookingTime': datetime.now().isoformat(),
-            'originalOrder': int(datetime.now().timestamp() * 1000)
-        }
-        
-        customers.append(new_customer)
-        
-        # تحديث قائمة انتظار الصنايعي
-        if assigned_worker in workers:
-            if 'queue' not in workers[assigned_worker]:
-                workers[assigned_worker]['queue'] = []
-            workers[assigned_worker]['queue'].append(new_customer['id'])
-        
-        # حفظ البيانات
-        storage['barber_workers_final'] = workers
-        storage['barber_customers_final'] = customers
-        save_local_storage(storage)
-        
-        print(f"✅ تم إضافة عميل جديد: {name} - الدور {queue_number} عند {assigned_worker}")
+        print(f"✅ تم إضافة عميل: {name} - الدور {queue_number} عند {assigned_worker}")
         
         return JsonResponse({
             'success': True,
-            'customer': new_customer,
+            'customer': {
+                'id': new_customer.customer_id,
+                'name': new_customer.name,
+                'queueNumber': queue_number
+            },
             'queueNumber': queue_number
         })
         
@@ -231,16 +216,42 @@ def api_update_customer_status(request):
         customer_id = data.get('customerId')
         status = data.get('status')
         
-        storage = load_local_storage()
-        customers = storage.get('barber_customers_final', [])
-        
-        for customer in customers:
-            if customer.get('id') == customer_id:
-                customer['status'] = status
-                break
-        
-        storage['barber_customers_final'] = customers
-        save_local_storage(storage)
+        with transaction.atomic():
+            customer = BarberCustomer.objects.get(customer_id=customer_id)
+            old_status = customer.status
+            
+            # تحديث وقت الإكمال
+            if status == 'completed' and old_status != 'completed':
+                customer.completed_time = timezone.now()
+            
+            customer.status = status
+            customer.save()
+            
+            # إذا تم إنهاء الخدمة، أزل من قائمة انتظار الصنايعي
+            if status == 'completed':
+                try:
+                    worker = BarberWorker.objects.get(name=customer.worker)
+                    if worker.queue:
+                        worker.queue = [q for q in worker.queue if q != customer_id]
+                        worker.save()
+                    
+                    # إذا كان الصنايعي مشغول بهذا العميل
+                    if worker.current_customer_id == customer_id:
+                        worker.current_customer_id = None
+                        worker.status = 'available'
+                        worker.save()
+                        
+                        # استدعاء العميل التالي
+                        if worker.queue:
+                            next_id = worker.queue[0]
+                            next_customer = BarberCustomer.objects.get(customer_id=next_id)
+                            worker.current_customer_id = next_id
+                            worker.status = 'busy'
+                            next_customer.status = 'in_service'
+                            next_customer.save()
+                            worker.save()
+                except BarberWorker.DoesNotExist:
+                    pass
         
         return JsonResponse({'success': True})
         
@@ -280,9 +291,8 @@ def api_send_notification(request):
 @require_http_methods(["GET"])
 def api_sync_data(request):
     """مزامنة البيانات - يعرض جميع البيانات الحالية"""
-    storage = load_local_storage()
-    workers = storage.get('barber_workers_final', {})
-    customers = storage.get('barber_customers_final', [])
+    workers = get_workers_dict()
+    customers = list(BarberCustomer.objects.values())
     
     return JsonResponse({
         'workers': workers,
@@ -299,17 +309,38 @@ def api_sync_save(request):
     """حفظ البيانات المرسلة من الواجهة"""
     try:
         data = json.loads(request.body)
-        workers = data.get('workers')
-        customers = data.get('customers')
+        workers_data = data.get('workers')
+        customers_data = data.get('customers')
         
-        storage = load_local_storage()
-        
-        if workers is not None:
-            storage['barber_workers_final'] = workers
-        if customers is not None:
-            storage['barber_customers_final'] = customers
+        with transaction.atomic():
+            if workers_data:
+                for name, worker_info in workers_data.items():
+                    worker, created = BarberWorker.objects.update_or_create(
+                        name=name,
+                        defaults={
+                            'status': worker_info.get('status', 'available'),
+                            'current_customer_id': worker_info.get('currentCustomer'),
+                            'queue': worker_info.get('queue', []),
+                            'skills': worker_info.get('skills', [])
+                        }
+                    )
             
-        save_local_storage(storage)
+            if customers_data:
+                # مسح العملاء الحاليين وإعادة إنشائهم
+                BarberCustomer.objects.all().delete()
+                for customer_info in customers_data:
+                    BarberCustomer.objects.create(
+                        customer_id=customer_info.get('id', int(datetime.now().timestamp() * 1000)),
+                        name=customer_info.get('name'),
+                        phone=customer_info.get('phone', ''),
+                        service=customer_info.get('service'),
+                        worker=customer_info.get('worker'),
+                        queue_number=customer_info.get('queueNumber', 1),
+                        status=customer_info.get('status', 'waiting'),
+                        original_order=customer_info.get('originalOrder', int(datetime.now().timestamp() * 1000)),
+                        booking_time=datetime.fromisoformat(customer_info.get('bookingTime', datetime.now().isoformat())) if customer_info.get('bookingTime') else timezone.now(),
+                        completed_time=datetime.fromisoformat(customer_info.get('completedTime')) if customer_info.get('completedTime') else None
+                    )
         
         return JsonResponse({'success': True})
         
@@ -321,30 +352,13 @@ def api_sync_save(request):
 def api_clear_data(request):
     """مسح جميع البيانات (للاختبار)"""
     try:
-        storage = {
-            'barber_workers_final': {
-                'محمد': {
-                    'status': 'available',
-                    'currentCustomer': None,
-                    'queue': [],
-                    'skills': ['حلاقة', 'لحية', 'حلاقة ولحية']
-                },
-                'أحمد': {
-                    'status': 'available',
-                    'currentCustomer': None,
-                    'queue': [],
-                    'skills': ['حلاقة', 'حلاقة وتصفيف', 'حلاقة كاملة']
-                },
-                'خالد': {
-                    'status': 'available',
-                    'currentCustomer': None,
-                    'queue': [],
-                    'skills': ['لحية', 'حلاقة ولحية', 'حلاقة كاملة']
-                }
-            },
-            'barber_customers_final': []
-        }
-        save_local_storage(storage)
+        with transaction.atomic():
+            BarberCustomer.objects.all().delete()
+            BarberWorker.objects.all().delete()
+            
+            # إعادة إنشاء الصنايعية الافتراضيين
+            init_default_workers()
+        
         return JsonResponse({'success': True, 'message': 'تم مسح جميع البيانات'})
         
     except Exception as e:
@@ -354,75 +368,39 @@ def api_clear_data(request):
 @require_http_methods(["GET"])
 def api_stats(request):
     """إحصائيات سريعة"""
-    storage = load_local_storage()
-    workers = storage.get('barber_workers_final', {})
-    customers = storage.get('barber_customers_final', [])
-    
-    available_workers = len([w for w in workers.values() if w.get('status') == 'available'])
-    busy_workers = len([w for w in workers.values() if w.get('status') == 'busy'])
-    waiting_customers = len([c for c in customers if c.get('status') == 'waiting'])
-    completed_customers = len([c for c in customers if c.get('status') == 'completed'])
+    total_workers = BarberWorker.objects.count()
+    available_workers = BarberWorker.objects.filter(status='available').count()
+    busy_workers = BarberWorker.objects.filter(status='busy').count()
+    waiting_customers = BarberCustomer.objects.filter(status='waiting').count()
+    completed_customers = BarberCustomer.objects.filter(status='completed').count()
+    total_customers = BarberCustomer.objects.count()
     
     return JsonResponse({
-        'total_workers': len(workers),
+        'total_workers': total_workers,
         'available_workers': available_workers,
         'busy_workers': busy_workers,
         'waiting_customers': waiting_customers,
         'completed_customers': completed_customers,
-        'total_customers': len(customers)
+        'total_customers': total_customers
     })
 
 
 @require_http_methods(["GET"])
 def api_debug(request):
-    """نقطة نهاية للتصحيح - تعرض مسار الملف وحجم البيانات"""
-    storage_path = get_storage_path()
-    exists = os.path.exists(storage_path)
-    size = 0
-    if exists:
-        size = os.path.getsize(storage_path)
-    
-    storage = load_local_storage()
+    """نقطة نهاية للتصحيح - تعرض حالة قاعدة البيانات"""
+    workers = BarberWorker.objects.all()
+    customers = BarberCustomer.objects.all()
     
     return JsonResponse({
-        'storage_path': storage_path,
-        'file_exists': exists,
-        'file_size': size,
-        'workers_count': len(storage.get('barber_workers_final', {})),
-        'customers_count': len(storage.get('barber_customers_final', [])),
-        'storage_data': storage
+        'workers_count': workers.count(),
+        'workers': list(workers.values()),
+        'customers_count': customers.count(),
+        'customers': list(customers.values()),
+        'database_connected': True
     })
 
 
 @require_http_methods(["POST"])
 def api_clear_session(request):
     """مسح جميع البيانات (للاختبار) - اسم بديل لـ api_clear_data"""
-    try:
-        storage = {
-            'barber_workers_final': {
-                'محمد': {
-                    'status': 'available',
-                    'currentCustomer': None,
-                    'queue': [],
-                    'skills': ['حلاقة', 'لحية', 'حلاقة ولحية']
-                },
-                'أحمد': {
-                    'status': 'available',
-                    'currentCustomer': None,
-                    'queue': [],
-                    'skills': ['حلاقة', 'حلاقة وتصفيف', 'حلاقة كاملة']
-                },
-                'خالد': {
-                    'status': 'available',
-                    'currentCustomer': None,
-                    'queue': [],
-                    'skills': ['لحية', 'حلاقة ولحية', 'حلاقة كاملة']
-                }
-            },
-            'barber_customers_final': []
-        }
-        save_local_storage(storage)
-        return JsonResponse({'success': True, 'message': 'تم مسح جميع البيانات'})
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+    return api_clear_data(request)
