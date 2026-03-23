@@ -392,9 +392,11 @@ def api_debug(request):
         'customers_count': len(storage.get('barber_customers_final', [])),
         'storage_data': storage
     })
-    @require_http_methods(["POST"])
+
+
+@require_http_methods(["POST"])
 def api_clear_session(request):
-    """مسح جميع البيانات (للاختبار)"""
+    """مسح جميع البيانات (للاختبار) - اسم بديل لـ api_clear_data"""
     try:
         storage = {
             'barber_workers_final': {
