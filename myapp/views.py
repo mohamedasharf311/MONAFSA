@@ -123,36 +123,68 @@ def registerUser(request):
 # ==================== دوال API للواتساب ====================
 
 @require_http_methods(["GET"])
+def api_test(request):
+    """اختبار بسيط لمعرفة إذا كان API يعمل"""
+    try:
+        storage = load_local_storage()
+        workers_count = len(storage.get('barber_workers_final', {}))
+        customers_count = len(storage.get('barber_customers_final', []))
+        
+        return JsonResponse({
+            'status': 'ok',
+            'message': 'API is working!',
+            'time': datetime.now().isoformat(),
+            'workers_count': workers_count,
+            'customers_count': customers_count,
+            'storage_path': get_storage_path()
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
 def api_workers(request):
     """جلب بيانات الصنايعية من localStorage"""
-    data = load_local_storage()
-    workers = data.get('barber_workers_final', {})
-    return JsonResponse(workers, safe=False)
+    try:
+        data = load_local_storage()
+        workers = data.get('barber_workers_final', {})
+        return JsonResponse(workers, safe=False)
+    except Exception as e:
+        print(f"❌ خطأ في api_workers: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @require_http_methods(["GET"])
 def api_queue(request):
     """جلب قائمة الانتظار من localStorage"""
-    data = load_local_storage()
-    customers = data.get('barber_customers_final', [])
-    waiting = [c for c in customers if c.get('status') == 'waiting']
-    return JsonResponse(waiting, safe=False)
+    try:
+        data = load_local_storage()
+        customers = data.get('barber_customers_final', [])
+        waiting = [c for c in customers if c.get('status') == 'waiting']
+        return JsonResponse(waiting, safe=False)
+    except Exception as e:
+        print(f"❌ خطأ في api_queue: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @require_http_methods(["GET"])
 def api_worker_queue(request):
     """جلب قائمة انتظار صنايعي محدد"""
-    worker_name = request.GET.get('name')
-    data = load_local_storage()
-    workers = data.get('barber_workers_final', {})
-    customers = data.get('barber_customers_final', [])
-    
-    if worker_name and worker_name in workers:
-        queue_ids = workers[worker_name].get('queue', [])
-        queue_customers = [c for c in customers if c.get('id') in queue_ids]
-        return JsonResponse(queue_customers, safe=False)
-    
-    return JsonResponse([], safe=False)
+    try:
+        worker_name = request.GET.get('name')
+        data = load_local_storage()
+        workers = data.get('barber_workers_final', {})
+        customers = data.get('barber_customers_final', [])
+        
+        if worker_name and worker_name in workers:
+            queue_ids = workers[worker_name].get('queue', [])
+            queue_customers = [c for c in customers if c.get('id') in queue_ids]
+            return JsonResponse(queue_customers, safe=False)
+        
+        return JsonResponse([], safe=False)
+    except Exception as e:
+        print(f"❌ خطأ في api_worker_queue: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
@@ -165,6 +197,8 @@ def api_add_customer(request):
         service = data.get('service')
         phone = data.get('phone')
         preferred_worker = data.get('preferred_worker')
+        
+        print(f"📝 محاولة إضافة عميل: {name}, {service}, {phone}, {preferred_worker}")
         
         # تحميل البيانات الحالية
         storage = load_local_storage()
@@ -219,6 +253,8 @@ def api_add_customer(request):
         
     except Exception as e:
         print(f"❌ خطأ في إضافة عميل: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
@@ -245,6 +281,7 @@ def api_update_customer_status(request):
         return JsonResponse({'success': True})
         
     except Exception as e:
+        print(f"❌ خطأ في تحديث حالة عميل: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
@@ -274,23 +311,28 @@ def api_send_notification(request):
         })
         
     except Exception as e:
+        print(f"❌ خطأ في إرسال الإشعار: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @require_http_methods(["GET"])
 def api_sync_data(request):
     """مزامنة البيانات - يعرض جميع البيانات الحالية"""
-    storage = load_local_storage()
-    workers = storage.get('barber_workers_final', {})
-    customers = storage.get('barber_customers_final', [])
-    
-    return JsonResponse({
-        'workers': workers,
-        'customers': customers,
-        'total_customers': len(customers),
-        'waiting_count': len([c for c in customers if c.get('status') == 'waiting']),
-        'completed_count': len([c for c in customers if c.get('status') == 'completed'])
-    })
+    try:
+        storage = load_local_storage()
+        workers = storage.get('barber_workers_final', {})
+        customers = storage.get('barber_customers_final', [])
+        
+        return JsonResponse({
+            'workers': workers,
+            'customers': customers,
+            'total_customers': len(customers),
+            'waiting_count': len([c for c in customers if c.get('status') == 'waiting']),
+            'completed_count': len([c for c in customers if c.get('status') == 'completed'])
+        })
+    except Exception as e:
+        print(f"❌ خطأ في api_sync_data: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt
@@ -314,6 +356,7 @@ def api_sync_save(request):
         return JsonResponse({'success': True})
         
     except Exception as e:
+        print(f"❌ خطأ في api_sync_save: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
@@ -348,50 +391,60 @@ def api_clear_data(request):
         return JsonResponse({'success': True, 'message': 'تم مسح جميع البيانات'})
         
     except Exception as e:
+        print(f"❌ خطأ في مسح البيانات: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @require_http_methods(["GET"])
 def api_stats(request):
     """إحصائيات سريعة"""
-    storage = load_local_storage()
-    workers = storage.get('barber_workers_final', {})
-    customers = storage.get('barber_customers_final', [])
-    
-    available_workers = len([w for w in workers.values() if w.get('status') == 'available'])
-    busy_workers = len([w for w in workers.values() if w.get('status') == 'busy'])
-    waiting_customers = len([c for c in customers if c.get('status') == 'waiting'])
-    completed_customers = len([c for c in customers if c.get('status') == 'completed'])
-    
-    return JsonResponse({
-        'total_workers': len(workers),
-        'available_workers': available_workers,
-        'busy_workers': busy_workers,
-        'waiting_customers': waiting_customers,
-        'completed_customers': completed_customers,
-        'total_customers': len(customers)
-    })
+    try:
+        storage = load_local_storage()
+        workers = storage.get('barber_workers_final', {})
+        customers = storage.get('barber_customers_final', [])
+        
+        available_workers = len([w for w in workers.values() if w.get('status') == 'available'])
+        busy_workers = len([w for w in workers.values() if w.get('status') == 'busy'])
+        waiting_customers = len([c for c in customers if c.get('status') == 'waiting'])
+        completed_customers = len([c for c in customers if c.get('status') == 'completed'])
+        
+        return JsonResponse({
+            'total_workers': len(workers),
+            'available_workers': available_workers,
+            'busy_workers': busy_workers,
+            'waiting_customers': waiting_customers,
+            'completed_customers': completed_customers,
+            'total_customers': len(customers)
+        })
+    except Exception as e:
+        print(f"❌ خطأ في api_stats: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @require_http_methods(["GET"])
 def api_debug(request):
     """نقطة نهاية للتصحيح - تعرض مسار الملف وحجم البيانات"""
-    storage_path = get_storage_path()
-    exists = os.path.exists(storage_path)
-    size = 0
-    if exists:
-        size = os.path.getsize(storage_path)
-    
-    storage = load_local_storage()
-    
-    return JsonResponse({
-        'storage_path': storage_path,
-        'file_exists': exists,
-        'file_size': size,
-        'workers_count': len(storage.get('barber_workers_final', {})),
-        'customers_count': len(storage.get('barber_customers_final', [])),
-        'storage_data': storage
-    })
+    try:
+        storage_path = get_storage_path()
+        exists = os.path.exists(storage_path)
+        size = 0
+        if exists:
+            size = os.path.getsize(storage_path)
+        
+        storage = load_local_storage()
+        
+        return JsonResponse({
+            'storage_path': storage_path,
+            'file_exists': exists,
+            'file_size': size,
+            'workers_count': len(storage.get('barber_workers_final', {})),
+            'customers_count': len(storage.get('barber_customers_final', [])),
+            'workers': storage.get('barber_workers_final', {}),
+            'customers': storage.get('barber_customers_final', [])
+        })
+    except Exception as e:
+        print(f"❌ خطأ في api_debug: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @require_http_methods(["POST"])
@@ -425,4 +478,5 @@ def api_clear_session(request):
         return JsonResponse({'success': True, 'message': 'تم مسح جميع البيانات'})
         
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400) 
+        print(f"❌ خطأ في مسح الجلسة: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
