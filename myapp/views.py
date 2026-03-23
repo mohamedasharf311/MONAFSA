@@ -454,8 +454,8 @@ def api_debug(request):
 
 
 @require_http_methods(["GET"])
-def api_fix_data(request):
-    """إصلاح البيانات - إضافة العملاء المفقودين من قوائم الانتظار"""
+def api_fix_missing_customers(request):
+    """إصلاح العملاء المفقودين من قوائم الانتظار"""
     try:
         storage = load_local_storage()
         workers = storage.get('barber_workers_final', {})
@@ -463,41 +463,38 @@ def api_fix_data(request):
         
         # جمع كل IDs العملاء من قوائم انتظار الصنايعية
         all_queue_ids = []
+        queue_worker_map = {}  # لتخزين أي صنايعي ينتمي إليه كل ID
+        
         for worker_name, worker_data in workers.items():
             queue_ids = worker_data.get('queue', [])
-            all_queue_ids.extend(queue_ids)
+            for qid in queue_ids:
+                all_queue_ids.append(qid)
+                queue_worker_map[qid] = worker_name
         
-        # جمع IDs العملاء الموجودة حالياً
+        # IDs العملاء الموجودة
         existing_ids = [c.get('id') for c in customers]
         
         # إضافة العملاء المفقودين
-        added_count = 0
+        added_customers = []
         for queue_id in all_queue_ids:
             if queue_id not in existing_ids:
-                # البحث عن الصنايعي الذي يحتوي هذا الـ ID
-                assigned_worker = 'محمد'
-                for worker_name, worker_data in workers.items():
-                    if queue_id in worker_data.get('queue', []):
-                        assigned_worker = worker_name
-                        break
-                
-                # إنشاء عميل افتراضي
+                # إنشاء عميل جديد للـ ID المفقود
                 new_customer = {
                     'id': queue_id,
                     'name': 'عميل جديد',
                     'phone': '',
                     'service': 'حلاقة',
-                    'worker': assigned_worker,
-                    'queueNumber': len(customers) + added_count + 1,
+                    'worker': queue_worker_map.get(queue_id, 'أحمد'),
+                    'queueNumber': len(customers) + len(added_customers) + 1,
                     'status': 'waiting',
                     'bookingTime': datetime.now().isoformat(),
                     'originalOrder': queue_id
                 }
                 customers.append(new_customer)
-                added_count += 1
-                print(f"✅ تم إضافة عميل مفقود: ID {queue_id} عند {assigned_worker}")
+                added_customers.append(new_customer)
+                print(f"✅ تم إضافة عميل مفقود: ID {queue_id} عند {new_customer['worker']}")
         
-        # تحديث أرقام الأدوار
+        # تحديث أرقام الأدوار للعملاء المنتظرين
         waiting_customers = [c for c in customers if c.get('status') == 'waiting']
         for idx, customer in enumerate(waiting_customers, 1):
             customer['queueNumber'] = idx
@@ -508,8 +505,8 @@ def api_fix_data(request):
         
         return JsonResponse({
             'success': True,
-            'message': f'تم إضافة {added_count} عميل مفقود',
-            'added_count': added_count,
+            'message': f'تم إضافة {len(added_customers)} عميل مفقود',
+            'added_customers': added_customers,
             'total_customers': len(customers),
             'waiting_count': len(waiting_customers)
         })
