@@ -20,5 +20,4 @@ urlpatterns = [
     path('api/clear_session', views.api_clear_session, name='api_clear_session'),
     path('api/test', views.api_test, name='api_test'),
     path('api/fix_data', views.api_fix_data, name='api_fix_data'),
-    path('api/fix_missing_customers', views.api_fix_missing_customers, name='api_fix_missing_customers'),
-]
+    path('api/fix_missing_customers', views.api_fix_missing_customers, name='api_fix_missing_customers'),]
