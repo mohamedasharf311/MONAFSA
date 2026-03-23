@@ -1,94 +1,872 @@
 {% include 'navbar.html' %}
 
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
-<style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم صالون الحلاقة - نظام الدور الذكي</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-body{
-    margin:0;
-    font-family: Arial, Helvetica, sans-serif;
-    background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-    color:white;
-    text-align:center;
-}
+        body {
+            font-family: 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
 
-/* navbar */
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
 
-.navbar{
-    padding:20px;
-    font-size:22px;
-    font-weight:bold;
-}
+        .header {
+            background: linear-gradient(135deg, #075E54 0%, #128C7E 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
 
-/* main section */
+        .whatsapp-status {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
 
-.hero{
-    margin-top:120px;
-}
+        .btn-add-worker, .btn-refresh {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
 
-.hero h1{
-    font-size:50px;
-    margin-bottom:10px;
-}
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
 
-.hero p{
-    font-size:20px;
-    opacity:0.9;
-}
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
 
-/* buttons */
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
 
-.btn{
-    display:inline-block;
-    margin:20px;
-    padding:15px 35px;
-    font-size:18px;
-    border-radius:8px;
-    text-decoration:none;
-    transition:0.3s;
-}
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #075E54;
+        }
 
-.start{
-    background:#00c853;
-    color:white;
-}
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
 
-.start:hover{
-    background:#00b248;
-}
+        @media (max-width: 1000px) {
+            .two-columns {
+                grid-template-columns: 1fr;
+            }
+        }
 
-.stats{
-    background:white;
-    color:#333;
-}
+        .workers-section, .queue-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
 
-.stats:hover{
-    background:#eee;
-}
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #075E54;
+            border-right: 4px solid #25D366;
+            padding-right: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-</style>
+        .workers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .worker-card {
+            background: #f9f9f9;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .worker-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .worker-header {
+            background: #075E54;
+            color: white;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .worker-status {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .status-available {
+            background: #25D366;
+        }
+
+        .status-busy {
+            background: #f44336;
+        }
+
+        .current-customer {
+            padding: 15px;
+            background: #e8f5e9;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .queue-list {
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            min-height: 150px;
+        }
+
+        .queue-item {
+            background: white;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .queue-number {
+            font-weight: bold;
+            color: #075E54;
+            background: #e0e0e0;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: 10px;
+            font-size: 12px;
+        }
+
+        .queue-actions button {
+            padding: 5px 10px;
+            margin-right: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-call { background: #25D366; color: white; }
+        .btn-transfer { background: #2196f3; color: white; }
+        .btn-move { background: #ff9800; color: white; }
+
+        .skills-list {
+            padding: 10px 15px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .skill-badge {
+            background: #e0e0e0;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary { background: #075E54; color: white; }
+        .btn-success { background: #25D366; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .btn-info { background: #2196f3; color: white; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            display: inline-block;
+        }
+
+        .status-waiting {
+            background: #ff9800;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .float-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .float-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
 </head>
-
 <body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>💈 صالون الحلاقة - نظام الدور الذكي</h1>
+                <p>متصل بواتساب - إدارة ذكية للحجوزات</p>
+            </div>
+            <div>
+                <span class="whatsapp-status">🟢 واتساب متصل</span>
+                <button class="btn-refresh" onclick="loadData()">🔄 تحديث</button>
+                <button class="btn-add-worker" onclick="openAddWorkerModal()">➕ إضافة صنايعي</button>
+            </div>
+        </div>
 
-<div class="navbar">
-🏆 منافسة
-</div>
+        <div class="stats-grid">
+            <div class="stat-card" onclick="openAddCustomerModal()">
+                <div>👥 عملاء اليوم</div>
+                <div class="stat-number" id="totalCustomers">0</div>
+                <div style="font-size: 12px;">اضغط للإضافة</div>
+            </div>
+            <div class="stat-card">
+                <div>⏳ في الانتظار</div>
+                <div class="stat-number" id="waitingCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div>✅ مكتملين</div>
+                <div class="stat-number" id="completedCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div>💇‍♂️ الصنايعية</div>
+                <div class="stat-number" id="workerCount">0</div>
+            </div>
+        </div>
 
-<div class="hero">
+        <div class="two-columns">
+            <div class="workers-section">
+                <div class="section-title">👨‍🦰 الصنايعية</div>
+                <div class="workers-grid" id="workersGrid"></div>
+            </div>
+            <div class="queue-section">
+                <div class="section-title">
+                    <span>📋 قائمة الانتظار</span>
+                    <button class="btn btn-info" onclick="openReorderModal()" style="font-size: 12px;">🔄 إعادة ترتيب</button>
+                </div>
+                <div class="queue-table">
+                    <table>
+                        <thead>
+                            <tr><th>#</th><th>الاسم</th><th>الخدمة</th><th>الصنايعي</th><th>وقت الحجز</th><th>الإجراءات</th></tr>
+                        </thead>
+                        <tbody id="queueBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<h1>تحدي نفسك كل يوم</h1>
+    <!-- مودال إضافة عميل -->
+    <div id="addCustomerModal" class="modal">
+        <div class="modal-content">
+            <h3>➕ إضافة عميل جديد</h3>
+            <form id="addCustomerForm">
+                <div class="form-group">
+                    <label>👤 اسم العميل (الثلاثي)</label>
+                    <input type="text" id="customerName" required placeholder="مثال: أحمد محمد عبدالله">
+                </div>
+                <div class="form-group">
+                    <label>✂️ الخدمة</label>
+                    <select id="customerService" required>
+                        <option value="حلاقة">حلاقة - 15 دقيقة</option>
+                        <option value="لحية">لحية - 10 دقائق</option>
+                        <option value="حلاقة ولحية">حلاقة ولحية - 25 دقيقة</option>
+                        <option value="حلاقة وتصفيف">حلاقة وتصفيف - 30 دقيقة</option>
+                        <option value="حلاقة كاملة">حلاقة كاملة - 40 دقيقة</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>📞 رقم واتساب (لإشعارات)</label>
+                    <input type="tel" id="customerPhone" placeholder="مثال: 201234567890">
+                </div>
+                <div class="form-group">
+                    <label>👨‍🦰 الصنايعي المفضل</label>
+                    <select id="customerWorker">
+                        <option value="أول متاح">أول متاح</option>
+                    </select>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn btn-success">➕ إضافة</button>
+                    <button type="button" class="btn btn-danger" onclick="closeAddCustomerModal()">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<p>
-ضع هاتفك في جيبك وابدأ التمرين  
-وسيحسب التطبيق العدّات تلقائيًا
-</p>
+    <!-- مودال نقل عميل -->
+    <div id="transferModal" class="modal">
+        <div class="modal-content">
+            <h3>🔄 نقل العميل لصنايعي آخر</h3>
+            <div id="transferCustomerInfo" style="background: #f5f5f5; padding: 10px; border-radius: 8px; margin-bottom: 15px;"></div>
+            <div class="form-group">
+                <label>👨‍🦰 اختر الصنايعي الجديد</label>
+                <select id="transferWorkerSelect" class="form-control"></select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-success" onclick="confirmTransfer()">🔄 نقل</button>
+                <button class="btn btn-danger" onclick="closeTransferModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
 
-    <a href="{% url 'auth' %}">Login</a>
+    <!-- مودال إعادة ترتيب -->
+    <div id="reorderModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3>🔄 إعادة ترتيب قائمة الانتظار</h3>
+            <div id="reorderList" style="max-height: 400px; overflow-y: auto;"></div>
+            <div class="modal-buttons" style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="closeReorderModal()">✅ حفظ</button>
+                <button class="btn btn-danger" onclick="closeReorderModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- مودال الصنايعية -->
+    <div id="workerModal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">➕ إضافة صنايعي جديد</h3>
+            <form id="workerForm">
+                <div class="form-group">
+                    <label>👤 اسم الصنايعي</label>
+                    <input type="text" id="workerName" required>
+                </div>
+                <div class="form-group">
+                    <label>✂️ المهارات</label>
+                    <div id="skillsCheckboxes"></div>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" class="btn btn-success">💾 حفظ</button>
+                    <button type="button" class="btn btn-danger" onclick="closeWorkerModal()">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-</div>
+    <button class="float-btn" onclick="openAddCustomerModal()">➕ عميل جديد</button>
 
+    <script>
+        const AVAILABLE_SERVICES = ['حلاقة', 'لحية', 'حلاقة ولحية', 'حلاقة وتصفيف', 'حلاقة كاملة'];
+        let workers = {};
+        let customers = [];
+        let transferCustomerId = null;
+
+        function loadData() {
+            const savedWorkers = localStorage.getItem('barber_workers_final');
+            const savedCustomers = localStorage.getItem('barber_customers_final');
+            
+            if (savedWorkers) workers = JSON.parse(savedWorkers);
+            else {
+                workers = {
+                    'محمد': { status: 'available', currentCustomer: null, queue: [], skills: ['حلاقة', 'لحية', 'حلاقة ولحية'] },
+                    'أحمد': { status: 'available', currentCustomer: null, queue: [], skills: ['حلاقة', 'حلاقة وتصفيف', 'حلاقة كاملة'] },
+                    'خالد': { status: 'available', currentCustomer: null, queue: [], skills: ['لحية', 'حلاقة ولحية', 'حلاقة كاملة'] }
+                };
+            }
+            
+            if (savedCustomers) customers = JSON.parse(savedCustomers);
+            else customers = [];
+            
+            updateDashboard();
+        }
+
+        function saveData() {
+            localStorage.setItem('barber_workers_final', JSON.stringify(workers));
+            localStorage.setItem('barber_customers_final', JSON.stringify(customers));
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function renumberQueue() {
+            const waitingCustomers = customers.filter(c => c.status === 'waiting').sort((a, b) => (a.originalOrder || a.id) - (b.originalOrder || b.id));
+            waitingCustomers.forEach((c, i) => c.queueNumber = i + 1);
+        }
+
+        function addCustomer(name, service, phone, preferredWorker = 'أول متاح') {
+            let assignedWorker = preferredWorker;
+            if (assignedWorker === 'أول متاح') {
+                for (let [name, data] of Object.entries(workers)) {
+                    if (data.status === 'available' && data.skills.includes(service)) {
+                        assignedWorker = name;
+                        break;
+                    }
+                }
+            }
+            
+            const queueNumber = customers.filter(c => c.status === 'waiting').length + 1;
+            const newCustomer = {
+                id: Date.now(),
+                name: name,
+                phone: phone,
+                service: service,
+                worker: assignedWorker,
+                queueNumber: queueNumber,
+                status: 'waiting',
+                bookingTime: new Date().toISOString(),
+                originalOrder: Date.now()
+            };
+            
+            customers.push(newCustomer);
+            
+            if (assignedWorker !== 'أول متاح' && workers[assignedWorker]) {
+                workers[assignedWorker].queue.push(newCustomer.id);
+            }
+            
+            renumberQueue();
+            saveData();
+            updateDashboard();
+            showToast(`✅ تم إضافة ${name} - الدور رقم ${newCustomer.queueNumber}`);
+            return newCustomer;
+        }
+
+        function reorderCustomer(customerId, newPosition) {
+            const waitingCustomers = customers.filter(c => c.status === 'waiting').sort((a, b) => a.queueNumber - b.queueNumber);
+            const index = waitingCustomers.findIndex(c => c.id === customerId);
+            if (index === -1) return;
+            
+            const customer = waitingCustomers[index];
+            waitingCustomers.splice(index, 1);
+            waitingCustomers.splice(newPosition - 1, 0, customer);
+            
+            waitingCustomers.forEach((c, i) => {
+                c.originalOrder = i;
+            });
+            
+            renumberQueue();
+            saveData();
+            updateDashboard();
+            showToast(`✅ تم نقل ${customer.name} إلى الدور رقم ${newPosition}`);
+        }
+
+        function transferCustomer(customerId, newWorker) {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return false;
+            
+            if (!workers[newWorker].skills.includes(customer.service)) {
+                showToast(`❌ ${newWorker} لا يجيد خدمة ${customer.service}`);
+                return false;
+            }
+            
+            if (customer.worker !== 'أول متاح' && workers[customer.worker]) {
+                const oldQueue = workers[customer.worker].queue;
+                const idx = oldQueue.findIndex(id => id === customer.id);
+                if (idx !== -1) oldQueue.splice(idx, 1);
+            }
+            
+            customer.worker = newWorker;
+            workers[newWorker].queue.push(customer.id);
+            
+            saveData();
+            updateDashboard();
+            showToast(`✅ تم نقل ${customer.name} إلى ${newWorker}`);
+            return true;
+        }
+
+        function callCustomer(customerId, workerName) {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return;
+            
+            if (workers[workerName].currentCustomer) {
+                showToast(`⚠️ ${workerName} مشغول حالياً`);
+                return;
+            }
+            
+            const queueIdx = workers[workerName].queue.findIndex(id => id === customerId);
+            if (queueIdx !== -1) workers[workerName].queue.splice(queueIdx, 1);
+            
+            workers[workerName].currentCustomer = customer.id;
+            workers[workerName].status = 'busy';
+            customer.status = 'in_service';
+            
+            saveData();
+            updateDashboard();
+            showToast(`📢 تم استدعاء ${customer.name} إلى ${workerName}`);
+            
+            if (customer.phone) {
+                console.log(`إرسال واتساب إلى ${customer.phone}: دورك الآن مع ${workerName}`);
+            }
+        }
+
+        function completeCustomer(workerName) {
+            if (!workers[workerName].currentCustomer) return;
+            
+            const customer = customers.find(c => c.id === workers[workerName].currentCustomer);
+            if (customer) {
+                customer.status = 'completed';
+                workers[workerName].currentCustomer = null;
+                workers[workerName].status = 'available';
+                
+                saveData();
+                updateDashboard();
+                showToast(`✅ تم إنهاء خدمة ${customer.name}`);
+                
+                if (workers[workerName].queue.length > 0) {
+                    const nextId = workers[workerName].queue[0];
+                    setTimeout(() => callCustomer(nextId, workerName), 500);
+                }
+            }
+        }
+
+        function updateDashboard() {
+            updateStats();
+            updateWorkersGrid();
+            updateQueueTable();
+            updateWorkerSelect();
+        }
+
+        function updateStats() {
+            document.getElementById('totalCustomers').textContent = customers.length;
+            document.getElementById('waitingCount').textContent = customers.filter(c => c.status === 'waiting').length;
+            document.getElementById('completedCount').textContent = customers.filter(c => c.status === 'completed').length;
+            document.getElementById('workerCount').textContent = Object.keys(workers).length;
+        }
+
+        function updateWorkersGrid() {
+            const grid = document.getElementById('workersGrid');
+            grid.innerHTML = '';
+            
+            for (let [name, data] of Object.entries(workers)) {
+                const current = data.currentCustomer ? customers.find(c => c.id === data.currentCustomer) : null;
+                const queueCustomers = data.queue.map(id => customers.find(c => c.id === id)).filter(c => c);
+                
+                grid.innerHTML += `
+                    <div class="worker-card">
+                        <div class="worker-header">
+                            <span>💇‍♂️ ${name}</span>
+                            <span class="worker-status ${data.status === 'available' ? 'status-available' : 'status-busy'}">
+                                ${data.status === 'available' ? 'متاح' : 'مشغول'}
+                            </span>
+                        </div>
+                        <div class="current-customer">
+                            <strong>👤 العميل الحالي:</strong><br>
+                            ${current ? `${current.name} - ${current.service} 🎫 #${current.queueNumber}` : '🚫 لا يوجد عميل'}
+                        </div>
+                        <div class="queue-list">
+                            <strong>⏳ قائمة الانتظار (${data.queue.length})</strong><br><br>
+                            ${queueCustomers.map(c => `
+                                <div class="queue-item">
+                                    <div><span class="queue-number">#${c.queueNumber}</span> ${c.name} - ${c.service}</div>
+                                    <div class="queue-actions">
+                                        <button class="btn-call" onclick="callCustomer(${c.id}, '${name}')">📢</button>
+                                        <button class="btn-transfer" onclick="openTransferModal(${c.id})">🔄</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            ${data.queue.length === 0 ? '<div style="color:#999;text-align:center;padding:20px;">✨ لا يوجد عملاء</div>' : ''}
+                        </div>
+                        <div class="skills-list">
+                            ${data.skills.map(s => `<span class="skill-badge">✂️ ${s}</span>`).join('')}
+                        </div>
+                        <div style="padding:15px;">
+                            <button class="btn btn-primary" onclick="completeCustomer('${name}')" ${!current ? 'disabled' : ''} style="width:100%;">
+                                ✅ إنهاء الخدمة
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function updateQueueTable() {
+            const waiting = customers.filter(c => c.status === 'waiting').sort((a, b) => a.queueNumber - b.queueNumber);
+            const tbody = document.getElementById('queueBody');
+            
+            if (waiting.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">✨ لا يوجد عملاء في الانتظار</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = waiting.map(c => `
+                <tr>
+                    <td>🎫 ${c.queueNumber}</td>
+                    <td>${c.name}</td>
+                    <td>${c.service}</td>
+                    <td>${c.worker}</td>
+                    <td>${new Date(c.bookingTime).toLocaleTimeString('ar-EG')}</td>
+                    <td>
+                        <button class="btn-move" onclick="openReorderSingleModal(${c.id})" style="padding:5px 10px;">🔄 ترتيب</button>
+                        <button class="btn-transfer" onclick="openTransferModal(${c.id})" style="padding:5px 10px;">👨‍🦰 نقل</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateWorkerSelect() {
+            const select = document.getElementById('customerWorker');
+            if (select) {
+                select.innerHTML = '<option value="أول متاح">أول متاح</option>' + 
+                    Object.keys(workers).map(w => `<option value="${w}">${w}</option>`).join('');
+            }
+            const transferSelect = document.getElementById('transferWorkerSelect');
+            if (transferSelect) {
+                transferSelect.innerHTML = Object.keys(workers).map(w => `<option value="${w}">${w}</option>`).join('');
+            }
+        }
+
+        function openReorderSingleModal(customerId) {
+            const customer = customers.find(c => c.id === customerId);
+            if (!customer) return;
+            const max = customers.filter(c => c.status === 'waiting').length;
+            const newPos = prompt(`تغيير ترتيب ${customer.name}\nالدور الحالي: ${customer.queueNumber}\nأدخل الرقم الجديد (1-${max}):`);
+            if (newPos && !isNaN(newPos) && newPos >= 1 && newPos <= max) {
+                reorderCustomer(customerId, parseInt(newPos));
+            }
+        }
+
+        function openTransferModal(customerId) {
+            transferCustomerId = customerId;
+            const customer = customers.find(c => c.id === customerId);
+            if (customer) {
+                document.getElementById('transferCustomerInfo').innerHTML = `
+                    <strong>${customer.name}</strong><br>
+                    الخدمة: ${customer.service}<br>
+                    الدور: #${customer.queueNumber}<br>
+                    الصنايعي الحالي: ${customer.worker}
+                `;
+            }
+            updateWorkerSelect();
+            document.getElementById('transferModal').style.display = 'flex';
+        }
+
+        function confirmTransfer() {
+            const newWorker = document.getElementById('transferWorkerSelect').value;
+            if (transferCustomerId && newWorker) {
+                transferCustomer(transferCustomerId, newWorker);
+                closeTransferModal();
+            }
+        }
+
+        function openReorderModal() {
+            const waiting = customers.filter(c => c.status === 'waiting').sort((a, b) => a.queueNumber - b.queueNumber);
+            const container = document.getElementById('reorderList');
+            container.innerHTML = waiting.map(c => `
+                <div class="queue-item" style="margin-bottom:10px;">
+                    <div><span class="queue-number">#${c.queueNumber}</span> ${c.name} - ${c.service}</div>
+                    <input type="number" id="pos-${c.id}" value="${c.queueNumber}" min="1" max="${waiting.length}" style="width:70px;padding:5px;">
+                    <button onclick="reorderCustomer(${c.id}, document.getElementById('pos-${c.id}').value)" class="btn btn-info">تطبيق</button>
+                </div>
+            `).join('');
+            document.getElementById('reorderModal').style.display = 'flex';
+        }
+
+        function openAddCustomerModal() {
+            updateWorkerSelect();
+            document.getElementById('addCustomerModal').style.display = 'flex';
+        }
+
+        function closeAddCustomerModal() {
+            document.getElementById('addCustomerModal').style.display = 'none';
+        }
+
+        function closeTransferModal() {
+            document.getElementById('transferModal').style.display = 'none';
+            transferCustomerId = null;
+        }
+
+        function closeReorderModal() {
+            document.getElementById('reorderModal').style.display = 'none';
+        }
+
+        function openAddWorkerModal() {
+            document.getElementById('modalTitle').textContent = '➕ إضافة صنايعي جديد';
+            document.getElementById('workerName').value = '';
+            document.getElementById('workerName').disabled = false;
+            renderSkillsCheckboxes([]);
+            document.getElementById('workerModal').style.display = 'flex';
+        }
+
+        function renderSkillsCheckboxes(selected) {
+            const container = document.getElementById('skillsCheckboxes');
+            container.innerHTML = AVAILABLE_SERVICES.map(s => `
+                <label style="display:inline-block;margin-left:15px;margin-bottom:10px;">
+                    <input type="checkbox" name="skills" value="${s}" ${selected.includes(s) ? 'checked' : ''}> ✂️ ${s}
+                </label>
+            `).join('');
+        }
+
+        function closeWorkerModal() {
+            document.getElementById('workerModal').style.display = 'none';
+        }
+
+        document.getElementById('addCustomerForm')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('customerName').value;
+            const service = document.getElementById('customerService').value;
+            const phone = document.getElementById('customerPhone').value;
+            const worker = document.getElementById('customerWorker').value;
+            if (name && service) {
+                addCustomer(name, service, phone, worker);
+                closeAddCustomerModal();
+                e.target.reset();
+            }
+        });
+
+        document.getElementById('workerForm')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('workerName').value.trim();
+            const skills = Array.from(document.querySelectorAll('input[name="skills"]:checked')).map(cb => cb.value);
+            if (!name) { alert('⚠️ أدخل اسم الصنايعي'); return; }
+            if (skills.length === 0) { alert('⚠️ اختر مهارة واحدة على الأقل'); return; }
+            
+            if (!workers[name]) {
+                workers[name] = { status: 'available', currentCustomer: null, queue: [], skills: skills };
+                saveData();
+                updateDashboard();
+                showToast(`✅ تم إضافة ${name}`);
+            } else {
+                alert('⚠️ هذا الاسم موجود بالفعل');
+                return;
+            }
+            closeWorkerModal();
+        });
+
+        loadData();
+        setInterval(() => loadData(), 5000);
+    </script>
 </body>
 </html>
