@@ -18,5 +18,5 @@ urlpatterns = [
     path('api/clear_data', views.api_clear_data, name='api_clear_data'),
     path('api/debug', views.api_debug, name='api_debug'),
     path('api/clear_session', views.api_clear_session, name='api_clear_session'),
-# الصفحة 
+# الpath('api/error_test', views.api_error_test, name='api_error_test'),
 ]
